@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Natural Language Toolkit: Interface to the Stanford NER-tagger
+# Natural Language Toolkit: Interface to the Stanford taggers
 #
 # Copyright (C) 2001-2011 NLTK Project
 # Author: Nitin Madnani <nmadnani@ets.org>
