@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Natural Language Toolkit: Interface to the Stanford taggers
+# Natural Language Toolkit: Interface to the Stanford NER-tagger
 #
 # Copyright (C) 2001-2011 NLTK Project
 # Author: Nitin Madnani <nmadnani@ets.org>
@@ -84,11 +84,16 @@ class StanfordTagger(TaggerI):
         # Return java configurations to their default values
         nltk.internals.config_java(options=default_options, verbose=False)
 
+        return self.parse_output(stanpos_output)
+
+    def parse_output(self, text):
         # Output the tagged sentences
         tagged_sentences = []
-        for tagged_sentence in stanpos_output.strip().split("\n"):
-            sentence = [tuple(tagged_word.strip().split(self._SEPARATOR))
-                        for tagged_word in tagged_sentence.strip().split()]
+        for tagged_sentence in text.strip().split("\n"):
+            sentence = []
+            for tagged_word in tagged_sentence.strip().split():
+                word_tags = tagged_word.strip().split(self._SEPARATOR)
+                sentence.append((''.join(word_tags[:-1]), word_tags[-1]))
             tagged_sentences.append(sentence)
         return tagged_sentences
 
@@ -138,6 +143,7 @@ class NERTagger(StanfordTagger):
 
     _SEPARATOR = '/'
     _JAR = 'stanford-ner.jar'
+    _FORMAT = 'slashTags'
 
     def __init__(self, *args, **kwargs):
         super(NERTagger, self).__init__(*args, **kwargs)
@@ -146,4 +152,9 @@ class NERTagger(StanfordTagger):
     def _cmd(self):
         return ['edu.stanford.nlp.ie.crf.CRFClassifier', \
                 '-loadClassifier', self._stanford_model, '-textFile', \
-                self._input_file_path, '-outputFormat', 'slashTags']
+                self._input_file_path, '-outputFormat', self._FORMAT]
+
+    def parse_output(self, text):
+      if self._FORMAT == 'slashTags':
+        return super(NERTagger, self).parse_output(text)
+      raise NotImplementedError
