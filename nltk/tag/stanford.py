@@ -54,7 +54,7 @@ class StanfordTagger(TaggerI):
     def batch_tag(self, sentences):
         encoding = self._encoding
         default_options = ' '.join(nltk.internals._java_options)
-        nltk.internals.config_java(options=self.java_options, verbose=False)
+        config_java(options=self.java_options, verbose=False)
 
         # Create a temporary input file
         _input_fh, _input_file_path = tempfile.mkstemp(text=True)
@@ -84,7 +84,7 @@ class StanfordTagger(TaggerI):
         os.unlink(_input_file_path)
 
         # Return java configurations to their default values
-        nltk.internals.config_java(options=default_options, verbose=False)
+        config_java(options=default_options, verbose=False)
 
         # Output the tagged sentences
         tagged_sentences = []
