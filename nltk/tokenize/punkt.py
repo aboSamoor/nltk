@@ -11,9 +11,62 @@
 #
 # $Id: probability.py 4865 2007-07-11 22:6:07Z edloper $
 
-"""
-The Punkt sentence tokenizer.  The algorithm for this tokenizer is
-described in Kiss & Strunk (2006)::
+r"""
+Punkt Sentence Tokenizer
+
+This tokenizer divides a text into a list of sentences,
+by using an unsupervised algorithm to build a model for abbreviation
+words, collocations, and words that start sentences.  It must be
+trained on a large collection of plaintext in the taret language
+before it can be used.
+
+The NLTK data package includes a pre-trained Punkt tokenizer for
+English.
+
+    >>> import nltk.data
+    >>> text = '''
+    ... Punkt knows that the periods in Mr. Smith and Johann S. Bach
+    ... do not mark sentence boundaries.  And sometimes sentences 
+    ... can start with non-capitalized words.  i is a good variable
+    ... name.
+    ... '''
+    >>> sent_detector = nltk.data.load('tokenizers/punkt/english.pickle')
+    >>> print '\n-----\n'.join(sent_detector.tokenize(text.strip()))
+    Punkt knows that the periods in Mr. Smith and Johann S. Bach
+    do not mark sentence boundaries.
+    -----
+    And sometimes sentences 
+    can start with non-capitalized words.
+    -----
+    i is a good variable
+    name.
+
+(Note that whitespace from the original text, including newlines, is
+retained in the output.)
+
+Punctuation following sentences can be included with the realign_boundaries
+flag:
+   
+    >>> text = '''
+    ... (How does it deal with this parenthesis?)  "It should be part of the
+    ... previous sentence."
+    ... '''
+    >>> print '\n-----\n'.join(
+    ...     sent_detector.tokenize(text.strip(), realign_boundaries=True))
+    (How does it deal with this parenthesis?)
+    -----
+    "It should be part of the
+    previous sentence."
+
+:class:`.PunktWordTokenizer` uses a regular expression to divide a text into tokens,
+leaving all periods attached to words, but separating off other punctuation:
+
+    >>> s = "Good muffins cost $3.88\nin New York.  Please buy me\ntwo of them.\n\nThanks."
+    >>> PunktWordTokenizer().tokenize(s)
+    ['Good', 'muffins', 'cost', '$3.88', 'in', 'New', 'York.', 'Please',
+    'buy', 'me', 'two', 'of', 'them.', 'Thanks.']
+
+The algorithm for this tokenizer is described in::
 
   Kiss, Tibor and Strunk, Jan (2006): Unsupervised Multilingual Sentence
     Boundary Detection.  Computational Linguistics 32: 485-525.
@@ -25,11 +78,10 @@ described in Kiss & Strunk (2006)::
 
 import re
 import math
+from collections import defaultdict
 
-from nltk.compat import defaultdict
 from nltk.probability import FreqDist
-
-from api import TokenizerI
+from nltk.tokenize.api import TokenizerI
 
 ######################################################################
 #{ Orthographic Context Constants
@@ -39,28 +91,28 @@ from api import TokenizerI
 # UNK=unknown, UC=uppercase, LC=lowercase, NC=no case.
 
 _ORTHO_BEG_UC    = 1 << 1
-"""Orthogaphic context: beginning of a sentence with upper case."""
+"""Orthographic context: beginning of a sentence with upper case."""
 
 _ORTHO_MID_UC    = 1 << 2
-"""Orthogaphic context: middle of a sentence with upper case."""
+"""Orthographic context: middle of a sentence with upper case."""
 
 _ORTHO_UNK_UC    = 1 << 3
-"""Orthogaphic context: unknown position in a sentence with upper case."""
+"""Orthographic context: unknown position in a sentence with upper case."""
 
 _ORTHO_BEG_LC    = 1 << 4
-"""Orthogaphic context: beginning of a sentence with lower case."""
+"""Orthographic context: beginning of a sentence with lower case."""
 
 _ORTHO_MID_LC    = 1 << 5
-"""Orthogaphic context: middle of a sentence with lower case."""
+"""Orthographic context: middle of a sentence with lower case."""
 
 _ORTHO_UNK_LC    = 1 << 6
-"""Orthogaphic context: unknown position in a sentence with lower case."""
+"""Orthographic context: unknown position in a sentence with lower case."""
 
 _ORTHO_UC = _ORTHO_BEG_UC + _ORTHO_MID_UC + _ORTHO_UNK_UC
-"""Orthogaphic context: occurs with upper case."""
+"""Orthographic context: occurs with upper case."""
 
 _ORTHO_LC = _ORTHO_BEG_LC + _ORTHO_MID_LC + _ORTHO_UNK_LC
-"""Orthogaphic context: occurs with lower case."""
+"""Orthographic context: occurs with lower case."""
 
 _ORTHO_MAP = {
         ('initial',  'upper'): _ORTHO_BEG_UC,
@@ -159,7 +211,7 @@ class PunktLanguageVars(object):
             return self._re_word_tokenizer
 
     def word_tokenize(self, s):
-        """Tokenize a string to split of punctuation other than periods"""
+        """Tokenize a string to split off punctuation other than periods"""
         return self._word_tokenizer_re().findall(s)
 
     _period_context_fmt = r"""
@@ -236,7 +288,7 @@ def _pair_iter(it):
 ######################################################################
 
 class PunktParameters(object):
-    """Stores data used to perform sentence boundary detection with punkt."""
+    """Stores data used to perform sentence boundary detection with Punkt."""
 
     def __init__(self):
         self.abbrev_types = set()
@@ -417,7 +469,7 @@ class PunktToken(object):
 #{ Punkt base class
 ######################################################################
 
-class _PunktBaseClass(object):
+class PunktBaseClass(object):
     """
     Includes common components of PunktTrainer and PunktSentenceTokenizer.
     """
@@ -508,13 +560,13 @@ class _PunktBaseClass(object):
 ######################################################################
 
 
-class PunktTrainer(_PunktBaseClass):
+class PunktTrainer(PunktBaseClass):
     """Learns parameters used in Punkt sentence boundary detection."""
 
     def __init__(self, train_text=None, verbose=False,
             lang_vars=PunktLanguageVars(), token_cls=PunktToken):
 
-        _PunktBaseClass.__init__(self, lang_vars=lang_vars,
+        PunktBaseClass.__init__(self, lang_vars=lang_vars,
                 token_cls=token_cls)
 
         self._type_fdist = FreqDist()
@@ -1085,7 +1137,7 @@ class PunktTrainer(_PunktBaseClass):
 ######################################################################
 
 
-class PunktSentenceTokenizer(_PunktBaseClass,TokenizerI):
+class PunktSentenceTokenizer(PunktBaseClass,TokenizerI):
     """
     A sentence tokenizer which uses an unsupervised algorithm to build
     a model for abbreviation words, collocations, and words that start
@@ -1099,7 +1151,7 @@ class PunktSentenceTokenizer(_PunktBaseClass,TokenizerI):
         train_text can either be the sole training text for this sentence
         boundary detector, or can be a PunktParameters object.
         """
-        _PunktBaseClass.__init__(self, lang_vars=lang_vars,
+        PunktBaseClass.__init__(self, lang_vars=lang_vars,
                 token_cls=token_cls)
         
         if train_text:
@@ -1445,7 +1497,7 @@ class PunktSentenceTokenizer(_PunktBaseClass,TokenizerI):
         return 'unknown'
 
 
-def main(text, tok_cls=PunktSentenceTokenizer, train_cls=PunktTrainer):
+def demo(text, tok_cls=PunktSentenceTokenizer, train_cls=PunktTrainer):
     """Builds a punkt model and applies it to the same text"""
     cleanup = lambda s: re.compile(r'(?:\r|^\s+)', re.MULTILINE).sub('', s).replace('\n', ' ')
     trainer = train_cls()
@@ -1456,6 +1508,6 @@ def main(text, tok_cls=PunktSentenceTokenizer, train_cls=PunktTrainer):
         print cleanup(l)
 
 
-if __name__ == '__main__':
-    import sys
-    main(sys.stdin.read())
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)

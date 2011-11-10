@@ -13,10 +13,11 @@ A module for interfacing with the Stanford POS-tagger.
 """
 
 import os
-from subprocess import PIPE
 import tempfile
-import nltk
-from api import *
+from subprocess import PIPE
+
+from nltk.internals import find_jar, config_java, java
+from nltk.tag.api import TaggerI
 
 _stanford_url = 'http://nlp.stanford.edu/software/tagger.shtml'
 
@@ -36,7 +37,7 @@ class StanfordTagger(TaggerI):
     """
     def __init__(self, path_to_model, path_to_jar=None, encoding=None, verbose=False, java_options='-mx1000m'):
 
-        self._stanford_jar = nltk.internals.find_jar(
+        self._stanford_jar = find_jar(
                 'stanford-postagger.jar', path_to_jar,
                 searchpath=(), url=_stanford_url,
                 verbose=verbose)
@@ -74,8 +75,8 @@ class StanfordTagger(TaggerI):
         _input_fh.close()
 
         # Run the tagger and get the output
-        stanpos_output, _stderr = nltk.internals.java(_stanpos_cmd,classpath=self._stanford_jar, \
-                                                       stdout=PIPE, stderr=PIPE)
+        stanpos_output, _stderr = java(_stanpos_cmd,classpath=self._stanford_jar, \
+                                       stdout=PIPE, stderr=PIPE)
         if encoding:
             stanpos_output = stanpos_output.decode(encoding)
 
@@ -93,3 +94,8 @@ class StanfordTagger(TaggerI):
             tagged_sentences.append(sentence)
         return tagged_sentences
 
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
