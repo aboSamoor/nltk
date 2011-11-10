@@ -7,42 +7,73 @@
 # For license information, see LICENSE.TXT
 
 """
-A tokenizer that divides strings into s-expressions.  E.g.:
+S-Expression Tokenizer
+
+``SExprTokenizer`` is used to find parenthesized expressions in a
+string.  In particular, it divides a string into a sequence of
+substrings that are either parenthesized expressions (including any
+nested parenthesized expressions), or other whitespace-separated
+tokens.
+
+    >>> SExprTokenizer().tokenize('(a b (c d)) e f (g)')
+    ['(a b (c d))', 'e', 'f', '(g)']
+
+By default, `SExprTokenizer` will raise a ``ValueError`` exception if
+used to tokenize an expression with non-matching parentheses:
+
+    >>> SExprTokenizer().tokenize('c) d) e (f (g')
+    Traceback (most recent call last):
+      ...
+    ValueError: Un-matched close paren at char 1
+
+The ``strict`` argument can be set to False to allow for
+non-matching parentheses.  Any unmatched close parentheses will be
+listed as their own s-expression; and the last partial sexpr with
+unmatched open parentheses will be listed as its own sexpr:
+
+    >>> SExprTokenizer(strict=False).tokenize('c) d) e (f (g')
+    ['c', ')', 'd', ')', 'e', '(f (g']
+
+The characters used for open and close parentheses may be customized
+using the ``parens`` argument to the `SExprTokenizer` constructor:
+
+    >>> SExprTokenizer(parens='{}').tokenize('{a b {c d}} e f {g}')
+    ['{a b {c d}}', 'e', 'f', '{g}']
+
+The s-expression tokenizer is also available as a function:
 
     >>> sexpr_tokenize('(a b (c d)) e f (g)')
     ['(a b (c d))', 'e', 'f', '(g)']
+
 """
 
 import re
 
-from api import *
+from nltk.tokenize.api import TokenizerI
 
 class SExprTokenizer(TokenizerI):
     """
-    A tokenizer that divides strings into X{s-expressions}.  An
-    s-expresion can be either:
+    A tokenizer that divides strings into s-expressions.
+    An s-expresion can be either:
    
-      - A parenthasized expression, including any nested parenthasized
-        expressions.
-      - A sequence of non-whitespace non-parenthasis characters.
+      - a parenthesized expression, including any nested parenthesized
+        expressions, or
+      - a sequence of non-whitespace non-parenthesis characters.
     
-    For example, the string C{'(a (b c)) d e (f)'} consists of four
-    s-expressions: C{'(a (b c))'}, C{'d'}, C{'e'}, and C{'(f)'}.  
-    """
-    def __init__(self, parens='()', strict=True):
-        """
-        Construct a new SExpr tokenizer.  By default, the characters
-        C{'('} and C{')'} are treated as open and close parenthases;
-        but alternative strings may be specified.
+    For example, the string ``(a (b c)) d e (f)`` consists of four
+    s-expressions: ``(a (b c))``, ``d``, ``e``, and ``(f)``.  
 
-        @param parens: A two-element sequence specifying the open and
-            close parenthases that should be used to find sexprs.  This
-            will typically be either a two-character string, or a list
-            of two strings.
-        @type parens: C{str} or C{list}
-        @param strict: If true, then raise an exception when tokenizing
-            an ill-formed sexpr.
-        """
+    By default, the characters ``(`` and ``)`` are treated as open and
+    close parentheses, but alternative strings may be specified.
+
+    :param parens: A two-element sequence specifying the open and close parentheses
+        that should be used to find sexprs.  This will typically be either a
+        two-character string, or a list of two strings.
+    :type parens: C{str} or C{list}
+    :param strict: If true, then raise an exception when tokenizing an ill-formed sexpr.
+    """
+
+    def __init__(self, parens='()', strict=True):
         if len(parens) != 2:
             raise ValueError('parens must contain exactly two strings')
         self._strict = strict
@@ -53,29 +84,30 @@ class SExprTokenizer(TokenizerI):
     
     def tokenize(self, text):
         """
-        Tokenize the text into s-expressions.  For example:
+        Return a list of s-expressions extracted from *text*.
+        For example:
     
             >>> SExprTokenizer().tokenize('(a b (c d)) e f (g)')
             ['(a b (c d))', 'e', 'f', '(g)']
 
-        All parenthases are assumed to mark sexprs.  In particular, no
-        special processing is done to exclude parenthases that occur
-        inside strings, or following backslash characters.
+        All parentheses are assumed to mark s-expressions.
+        (No special processing is done to exclude parentheses that occur
+        inside strings, or following backslash characters.)
 
-        If the given expression contains non-matching parenthases,
+        If the given expression contains non-matching parentheses,
         then the behavior of the tokenizer depends on the C{strict}
         parameter to the constructor.  If C{strict} is C{True}, then
         raise a C{ValueError}.  If C{strict} is C{False}, then any
-        unmatched close parenthases will be listed as their own
-        s-expression; and the last partial sexpr with unmatched open
-        parenthases will be listed as its own sexpr:
+        unmatched close parentheses will be listed as their own
+        s-expression; and the last partial s-expression with unmatched open
+        parentheses will be listed as its own s-expression:
 
             >>> SExprTokenizer(strict=False).tokenize('c) d) e (f (g')
             ['c', ')', 'd', ')', 'e', '(f (g']
         
-        @param text: the string to be tokenized
-        @type text: C{string} or C{iter(string)}
-        @return: An iterator over tokens (each of which is an s-expression)
+        :param text: the string to be tokenized
+        :type text: str or iter(str)
+        :rtype: iter(str)
         """
         result = []
         pos = 0
@@ -103,17 +135,9 @@ class SExprTokenizer(TokenizerI):
 
 sexpr_tokenize = SExprTokenizer().tokenize
 
-def demo():
-    from nltk import tokenize
 
-    example = "d (d ((e) ((f) ss) a a c) d) r (t i) (iu a"
-    example = "d [d [[e] [[f] ss] a a c] d] r [t i]"
-    print 'Input text:'
-    print example
-    print
-    print 'Tokenize s-expressions:'
-    for x in SExprTokenizer('[]').tokenize(example):
-        print x
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
 
-if __name__ == '__main__':
-    demo()
+

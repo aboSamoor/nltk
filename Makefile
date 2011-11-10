@@ -6,7 +6,7 @@
 # URL: <http://www.nltk.org/>
 # For license information, see LICENSE.TXT
 
-PYTHON = python2
+PYTHON = python
 VERSION = $(shell $(PYTHON) -c 'import nltk; print nltk.__version__' | sed '/^Warning: */d')
 NLTK_URL = $(shell $(PYTHON) -c 'import nltk; print nltk.__url__' | sed '/^Warning: */d')
 GOOGLE_ACCT = StevenBird1
@@ -91,7 +91,7 @@ rpmdist: clean_code
 	$(PYTHON) setup.py -q bdist --format=rpm
 windist: clean_code
 	$(PYTHON) setup.py -q bdist --format=wininst
-	rm dist/nltk-$(VERSION).win32.exe
+	rm dist/nltk-$(VERSION).win32.exe || true
 	mv dist/nltk-$(VERSION)*.exe dist/nltk-$(VERSION).win32.exe
 #debdist: clean_code
 #	alien --to-deb --bump=0 dist/nltk-$(VERSION)*noarch.rpm
@@ -159,8 +159,8 @@ dmgdist:
 	mv $(LIB_PATH)/nltk-$(VERSION)/* $(LIB_PATH)
 	rmdir $(LIB_PATH)/nltk-$(VERSION)
 	chmod -R a+r $(MACROOT)
-	mkdir -p nltk-$(VERSION)
 ifeq ($(shell uname), Darwin)
+	mkdir -p nltk-$(VERSION)
 	$(PM) -d ./NLTK.pmdoc -o nltk-$(VERSION)/$(NLTK_PKG)
 	rm -f dist/$(NLTK_DMG)
 	hdiutil create dist/$(NLTK_DMG) -srcfolder nltk-$(VERSION)
@@ -169,9 +169,6 @@ endif
 ########################################################################
 # DATA
 ########################################################################
-
-data_index:
-	echo "use make pkg_index"
 
 pkg_index:
 	$(PYTHON) tools/build_pkg_index.py ../nltk_data http://nltk.googlecode.com/svn/trunk/nltk_data/packages ../nltk_data/index.xml
@@ -184,8 +181,7 @@ pkg_index:
 .PHONY: clean clean_up
 
 clean:	clean_up
-	rm -rf build iso dist MANIFEST $(MACROOT) nltk-$(VERSION)
-	$(MAKE) -C doc clean
+	rm -rf build iso dist api MANIFEST $(MACROOT) nltk-$(VERSION)
 	$(MAKE) -C javasrc clean
 #	rm -f nltk/nltk.jar
 

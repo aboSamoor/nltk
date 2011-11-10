@@ -13,10 +13,11 @@ A module for interfacing with the Stanford taggers.
 """
 
 import os
-from subprocess import PIPE
 import tempfile
-import nltk
-from api import *
+from subprocess import PIPE
+
+from nltk.internals import find_jar, config_java, java
+from nltk.tag.api import TaggerI
 
 _stanford_url = 'http://nlp.stanford.edu/software'
 
@@ -35,7 +36,7 @@ class StanfordTagger(TaggerI):
 
     def __init__(self, path_to_model, path_to_jar=None, encoding=None, verbose=False, java_options='-mx1000m'):
 
-        self._stanford_jar = nltk.internals.find_jar(
+        self._stanford_jar = find_jar(
                 self._JAR, path_to_jar,
                 searchpath=(), url=_stanford_url,
                 verbose=verbose)
@@ -56,7 +57,7 @@ class StanfordTagger(TaggerI):
     def batch_tag(self, sentences):
         encoding = self._encoding
         default_options = ' '.join(nltk.internals._java_options)
-        nltk.internals.config_java(options=self.java_options, verbose=False)
+        config_java(options=self.java_options, verbose=False)
 
         # Create a temporary input file
         _input_fh, self._input_file_path = tempfile.mkstemp(text=True)
@@ -73,7 +74,7 @@ class StanfordTagger(TaggerI):
         _input_fh.close()
 
         # Run the tagger and get the output
-        stanpos_output, _stderr = nltk.internals.java(self._cmd,classpath=self._stanford_jar, \
+        stanpos_output, _stderr = java(self._cmd,classpath=self._stanford_jar, \
                                                        stdout=PIPE, stderr=PIPE)
         if encoding:
             stanpos_output = stanpos_output.decode(encoding)
@@ -82,7 +83,7 @@ class StanfordTagger(TaggerI):
         os.unlink(self._input_file_path)
 
         # Return java configurations to their default values
-        nltk.internals.config_java(options=default_options, verbose=False)
+        config_java(options=default_options, verbose=False)
 
         return self.parse_output(stanpos_output)
 
@@ -158,3 +159,8 @@ class NERTagger(StanfordTagger):
       if self._FORMAT == 'slashTags':
         return super(NERTagger, self).parse_output(text)
       raise NotImplementedError
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)

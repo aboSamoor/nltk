@@ -7,50 +7,71 @@
 # For license information, see LICENSE.TXT
 
 """
-Classes and interfaces for tagging each token of a sentence with
-supplementary information, such as its part of speech.  This task,
-which is known as X{tagging}, is defined by the L{TaggerI} interface.
+NLTK Taggers
+
+This package contains classes and interfaces for part-of-speech
+tagging, or simply "tagging".
+
+A "tag" is a case-sensitive string that specifies some property of a token,
+such as its part of speech.  Tagged tokens are encoded as tuples
+``(tag, token)``.  For example, the following tagged token combines
+the word ``'fly'`` with a noun part of speech tag (``'NN'``):
+
+    >>> tagged_tok = ('fly', 'NN')
+
+An off-the-shelf tagger is available.  It uses the Penn Treebank tagset:
+
+    >>> from nltk import pos_tag, word_tokenize
+    >>> pos_tag(word_tokenize("John's big idea isn't all that bad."))
+    [('John', 'NNP'), ("'s", 'POS'), ('big', 'JJ'), ('idea', 'NN'), ('is',
+    'VBZ'), ("n't", 'RB'), ('all', 'DT'), ('that', 'DT'), ('bad', 'JJ'),
+    ('.', '.')]
+
+This package defines several taggers, which take a token list (typically a
+sentence), assign a tag to each token, and return the resulting list of
+tagged tokens.  Most of the taggers are built automatically based on a
+training corpus.  For example, the unigram tagger tags each word *w*
+by checking what the most frequent tag for *w* was in a training corpus:
+
+    >>> from nltk.corpus import brown
+    >>> tagger = UnigramTagger(brown.tagged_sents(categories='news')[:500])
+    >>> tagger.tag(['Mitchell', 'decried', 'the', 'high', 'rate', 'of', 'unemployment'])
+    [('Mitchell', 'NP'), ('decried', None), ('the', 'AT'), ('high', 'JJ'),
+    ('rate', 'NN'), ('of', 'IN'), ('unemployment', None)]
+
+Note that words that the tagger has not seen during training receive a tag
+of ``None``.
+
+We evaluate a tagger on data that was not seen during training:
+
+    >>> tagger.evaluate(brown.tagged_sents(categories='news')[500:600]) # doctest: +ELLIPSIS
+    0.734...
+
+For more information, please consult chapter 5 of the NLTK Book.
 """
 
-from api import *
-from util import *
-from simplify import *
-from sequential import *
-from brill import *
-from tnt import *
-from hunpos import *
-from stanford import *
-import nltk
+from nltk.tag.api        import TaggerI
+from nltk.tag.util       import str2tuple, tuple2str, untag
+from nltk.tag.simplify   import (simplify_brown_tag, simplify_wsj_tag,
+                                 simplify_indian_tag, simplify_alpino_tag,
+                                 simplify_tag)
+from nltk.tag.sequential import (SequentialBackoffTagger, ContextTagger,
+                                 DefaultTagger, NgramTagger, UnigramTagger,
+                                 BigramTagger, TrigramTagger, AffixTagger,
+                                 RegexpTagger, ClassifierBasedTagger,
+                                 ClassifierBasedPOSTagger) 
+from nltk.tag.brill      import BrillTagger, BrillTaggerTrainer, FastBrillTaggerTrainer   
+from nltk.tag.tnt        import TnT
+from nltk.tag.hunpos     import HunposTagger
+from nltk.tag.stanford   import StanfordTagger
+from nltk.tag.crf        import MalletCRF 
 
-__all__ = [
-    # Tagger interface
-    'TaggerI',
-
-    # Standard POS tagger
-    'pos_tag', 'batch_pos_tag',
-    
-    # Should these be included:?
-    #'SequentialBackoffTagger', 'ContextTagger',
-
-    # Sequential backoff taggers.
-    'DefaultTagger', 'UnigramTagger', 'BigramTagger', 'TrigramTagger',
-    'NgramTagger', 'AffixTagger', 'RegexpTagger',
-
-    # Brill tagger -- trainer names?
-    'BrillTagger', 'BrillTaggerTrainer', 'FastBrillTaggerTrainer',
-
-    # Utilities.  Note: conversion functions x2y are intentionally
-    # left out; they should be accessed as nltk.tag.x2y().  Similarly
-    # for nltk.tag.accuracy.
-    'untag', 
-    ]
+from nltk.data      import load
 
 # Import hmm module if numpy is installed
 try:
     import numpy
-    from hmm import *
-    __all__ += ['HiddenMarkovModelTagger', 'HiddenMarkovModelTrainer',]
-    # [xx] deprecated HiddenMarkovModel etc objects?
+    from nltk.tag.hmm import HiddenMarkovModelTagger, HiddenMarkovModelTrainer
 except ImportError:
     pass
 
@@ -60,8 +81,19 @@ def pos_tag(tokens):
     """
     Use NLTK's currently recommended part of speech tagger to
     tag the given list of tokens.
+    
+        >>> from nltk import pos_tag, word_tokenize
+        >>> pos_tag(word_tokenize("John's big idea isn't all that bad."))
+        [('John', 'NNP'), ("'s", 'POS'), ('big', 'JJ'), ('idea', 'NN'), ('is',
+        'VBZ'), ("n't", 'RB'), ('all', 'DT'), ('that', 'DT'), ('bad', 'JJ'),
+        ('.', '.')]
+
+    :param tokens: Sequence of tokens to be tagged
+    :type tokens: list(str)
+    :return: The tagged tokens
+    :rtype: list(tuple(str, str))
     """
-    tagger = nltk.data.load(_POS_TAGGER)
+    tagger = load(_POS_TAGGER)
     return tagger.tag(tokens)
 
 def batch_pos_tag(sentences):
@@ -69,5 +101,10 @@ def batch_pos_tag(sentences):
     Use NLTK's currently recommended part of speech tagger to tag the
     given list of sentences, each consisting of a list of tokens.
     """
-    tagger = nltk.data.load(_POS_TAGGER)
+    tagger = load(_POS_TAGGER)
     return tagger.batch_tag(sentences)
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
